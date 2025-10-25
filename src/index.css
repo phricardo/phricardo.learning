@@ -1,0 +1,162 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Dark theme base */
+    --background: 0 0% 7%;
+    --foreground: 0 0% 98%;
+
+    /* Cards with subtle elevation */
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 98%;
+    --card-hover: 0 0% 13%;
+
+    /* Popover */
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Primary - vibrant green */
+    --primary: 142 71% 45%;
+    --primary-foreground: 0 0% 98%;
+    --primary-glow: 142 71% 55%;
+
+    /* Secondary - deep slate */
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 98%;
+
+    /* Muted elements */
+    --muted: 0 0% 17%;
+    --muted-foreground: 0 0% 65%;
+
+    /* Accent - green tint */
+    --accent: 142 71% 50%;
+    --accent-foreground: 0 0% 98%;
+
+    /* Destructive */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Borders and inputs */
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 142 71% 45%;
+
+    /* Radius */
+    --radius: 0.75rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(142 71% 45%), hsl(142 71% 55%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 11%), hsl(0 0% 9%));
+
+    /* Shadows */
+    --shadow-glow: 0 0 40px hsl(142 71% 45% / 0.3);
+    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 142 71% 45%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 13%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 142 71% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  /* Markdown Styles */
+  .markdown-content h1 {
+    @apply text-3xl font-bold mb-6 mt-8;
+  }
+
+  .markdown-content h2 {
+    @apply text-2xl font-semibold mb-4 mt-6;
+  }
+
+  .markdown-content h3 {
+    @apply text-xl font-semibold mb-3 mt-5;
+  }
+
+  .markdown-content h4 {
+    @apply text-lg font-semibold mb-2 mt-4;
+  }
+
+  .markdown-content p {
+    @apply mb-4 leading-relaxed;
+  }
+
+  .markdown-content ul, .markdown-content ol {
+    @apply mb-4 ml-6 space-y-2;
+  }
+
+  .markdown-content ul {
+    @apply list-disc;
+  }
+
+  .markdown-content ol {
+    @apply list-decimal;
+  }
+
+  .markdown-content li {
+    @apply leading-relaxed;
+  }
+
+  .markdown-content blockquote {
+    @apply border-l-4 border-primary pl-4 italic my-4 text-muted-foreground;
+  }
+
+  .markdown-content code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+
+  .markdown-content pre {
+    @apply bg-muted p-4 rounded-lg overflow-x-auto mb-4;
+  }
+
+  .markdown-content pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .markdown-content table {
+    @apply w-full border-collapse mb-4;
+  }
+
+  .markdown-content th {
+    @apply border border-border bg-muted px-4 py-2 text-left font-semibold;
+  }
+
+  .markdown-content td {
+    @apply border border-border px-4 py-2;
+  }
+
+  .markdown-content a {
+    @apply text-primary hover:underline;
+  }
+
+  .markdown-content strong {
+    @apply font-semibold;
+  }
+
+  .markdown-content em {
+    @apply italic;
+  }
+
+  .markdown-content hr {
+    @apply my-6 border-border;
+  }
+}
