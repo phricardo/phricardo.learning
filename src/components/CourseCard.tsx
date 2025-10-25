@@ -27,7 +27,10 @@ export const CourseCard = ({ course }: CourseCardProps) => {
         <div className="p-5">
           <div className="flex items-center gap-2 mb-3">
             {course.isFree && (
-              <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
+              <Badge
+                variant="secondary"
+                className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/10"
+              >
                 Gratuito
               </Badge>
             )}
@@ -38,7 +41,7 @@ export const CourseCard = ({ course }: CourseCardProps) => {
             ))}
           </div>
           <h3 className="font-semibold text-lg mb-3 line-clamp-2">
-            {course.slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+            {course.title}
           </h3>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">

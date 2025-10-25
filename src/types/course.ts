@@ -6,6 +6,7 @@ export interface Instructor {
 
 export interface Course {
   slug: string;
+  title: string;
   thumbnailUrl: string;
   instructors: Instructor[];
   tags: string[];
