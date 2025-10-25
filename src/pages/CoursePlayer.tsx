@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { CourseDetails, ModuleDetails } from "@/types/course";
+import { CourseDetails, ModuleDetails, Lesson } from "@/types/course";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -79,9 +79,7 @@ const LessonContent = ({ lesson }: { lesson: LessonData }) => {
 };
 
 const fetchCourseDetails = async (slug: string): Promise<CourseDetails> => {
-  const response = await fetch(
-    `${API_V1_BASE_URL}/courses/${slug}`
-  );
+  const response = await fetch(`${API_V1_BASE_URL}/courses/${slug}`);
   if (!response.ok) throw new Error("Failed to fetch course");
   return response.json();
 };
@@ -98,7 +96,9 @@ const fetchModuleDetails = async (
 };
 
 const CoursePlayer = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, moduleSlug: moduleSlugParam, lessonSlug: lessonSlugParam } =
+    useParams<{ slug: string; moduleSlug?: string; lessonSlug?: string }>();
+  const navigate = useNavigate();
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
   const [currentLesson, setCurrentLesson] = useState<{
     moduleSlug: string;
@@ -110,6 +110,29 @@ const CoursePlayer = () => {
   const [isCompletingLesson, setIsCompletingLesson] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
+
+  const updateLessonSelection = (
+    moduleSlug: string,
+    lesson: Lesson,
+    { syncUrl = true }: { syncUrl?: boolean } = {}
+  ) => {
+    setCurrentLesson({ moduleSlug, lessonSlug: lesson.slug });
+    setCurrentLessonData({
+      provider: lesson.provider,
+      videoId: lesson.videoId,
+      content: lesson.content,
+      title: lesson.title,
+      durationMinutes: lesson.durationMinutes,
+      description: lesson.description,
+      files: lesson.files,
+    });
+
+    if (syncUrl && slug) {
+      navigate(`/courses/${slug}/${moduleSlug}/${lesson.slug}`, {
+        replace: true,
+      });
+    }
+  };
 
   const { data: course, isLoading: courseLoading } = useQuery({
     queryKey: ["course", slug],
@@ -125,55 +148,84 @@ const CoursePlayer = () => {
 
   // Auto-expand first module and select first lesson
   useEffect(() => {
-    if (course && !expandedModule) {
-      const firstModule = course.modules[0];
-      if (firstModule) {
-        setExpandedModule(firstModule.slug);
-      }
-    }
-  }, [course, expandedModule]);
+    if (!course) return;
 
-  // Auto-select first lesson when first module loads
-  useEffect(() => {
-    if (moduleDetails && !currentLessonData) {
-      const firstLesson = moduleDetails.module.lessons[0];
-      if (firstLesson) {
-        setCurrentLesson({
-          moduleSlug: moduleDetails.module.slug,
-          lessonSlug: firstLesson.slug,
-        });
-        setCurrentLessonData({
-          provider: firstLesson.provider,
-          videoId: firstLesson.videoId,
-          content: firstLesson.content,
-          title: firstLesson.title,
-          durationMinutes: firstLesson.durationMinutes,
-          description: firstLesson.description,
-          files: firstLesson.files,
-        });
+    if (moduleSlugParam) {
+      const hasModule = course.modules.some(
+        (module) => module.slug === moduleSlugParam
+      );
+      if (hasModule) {
+        setExpandedModule((current) =>
+          current === moduleSlugParam ? current : moduleSlugParam
+        );
+        return;
       }
     }
-  }, [moduleDetails, currentLessonData]);
+
+    setExpandedModule((current) => {
+      if (current) return current;
+      const firstModule = course.modules[0];
+      return firstModule ? firstModule.slug : null;
+    });
+  }, [course, moduleSlugParam]);
+
+  // Auto-select lesson from URL (or first lesson on initial load)
+  useEffect(() => {
+    if (!moduleDetails) return;
+
+    const lessons = moduleDetails.module.lessons;
+    if (!lessons.length) return;
+
+    const isUrlModule = moduleSlugParam === moduleDetails.module.slug;
+    const urlLessonSlug = isUrlModule ? lessonSlugParam : undefined;
+
+    if (urlLessonSlug) {
+      const lessonFromUrl = lessons.find(
+        (lesson) => lesson.slug === urlLessonSlug
+      );
+
+      if (
+        lessonFromUrl &&
+        (currentLesson?.moduleSlug !== moduleDetails.module.slug ||
+          currentLesson.lessonSlug !== urlLessonSlug)
+      ) {
+        updateLessonSelection(moduleDetails.module.slug, lessonFromUrl, {
+          syncUrl: false,
+        });
+      }
+      return;
+    }
+
+    if (!currentLessonData) {
+      const firstLesson = lessons[0];
+      updateLessonSelection(moduleDetails.module.slug, firstLesson);
+    }
+  }, [
+    moduleDetails,
+    moduleSlugParam,
+    lessonSlugParam,
+    currentLesson,
+    currentLessonData,
+  ]);
 
   const handleModuleClick = (moduleSlug: string) => {
     setExpandedModule(expandedModule === moduleSlug ? null : moduleSlug);
   };
 
   const handleLessonClick = (moduleSlug: string, lessonSlug: string) => {
-    setCurrentLesson({ moduleSlug, lessonSlug });
+    if (
+      currentLesson?.moduleSlug === moduleSlug &&
+      currentLesson.lessonSlug === lessonSlug
+    ) {
+      return;
+    }
+
     const lesson = moduleDetails?.module.lessons.find(
       (l) => l.slug === lessonSlug
     );
+
     if (lesson) {
-      setCurrentLessonData({
-        provider: lesson.provider,
-        videoId: lesson.videoId,
-        content: lesson.content,
-        title: lesson.title,
-        durationMinutes: lesson.durationMinutes,
-        description: lesson.description,
-        files: lesson.files,
-      });
+      updateLessonSelection(moduleSlug, lesson);
     }
   };
 
@@ -228,109 +280,60 @@ const CoursePlayer = () => {
   };
 
   const navigateLesson = (direction: "prev" | "next") => {
-    if (!course || !currentLesson) return;
+    if (!course || !currentLesson || !slug) return;
 
-    // Find current module index and lesson index
     const currentModuleIndex = course.modules.findIndex(
       (m) => m.slug === currentLesson.moduleSlug
     );
     if (currentModuleIndex === -1) return;
 
-    // We need to fetch the current module details to get lessons
-    fetchModuleDetails(slug!, currentLesson.moduleSlug).then(
+    fetchModuleDetails(slug, currentLesson.moduleSlug).then(
       (currentModuleData) => {
         const currentLessonIndex = currentModuleData.module.lessons.findIndex(
           (l) => l.slug === currentLesson.lessonSlug
         );
+        if (currentLessonIndex === -1) return;
 
         if (direction === "next") {
-          // Check if there's a next lesson in current module
           if (
             currentLessonIndex <
             currentModuleData.module.lessons.length - 1
           ) {
             const nextLesson =
               currentModuleData.module.lessons[currentLessonIndex + 1];
-            setCurrentLesson({
-              moduleSlug: currentLesson.moduleSlug,
-              lessonSlug: nextLesson.slug,
-            });
-            setCurrentLessonData({
-              provider: nextLesson.provider,
-              videoId: nextLesson.videoId,
-              content: nextLesson.content,
-              title: nextLesson.title,
-              durationMinutes: nextLesson.durationMinutes,
-              description: nextLesson.description,
-              files: nextLesson.files,
-            });
-          } else if (currentModuleIndex < course.modules.length - 1) {
-            // Move to first lesson of next module
+            updateLessonSelection(currentLesson.moduleSlug, nextLesson);
+            return;
+          }
+
+          if (currentModuleIndex < course.modules.length - 1) {
             const nextModule = course.modules[currentModuleIndex + 1];
             setExpandedModule(nextModule.slug);
-            fetchModuleDetails(slug!, nextModule.slug).then(
+            fetchModuleDetails(slug, nextModule.slug).then(
               (nextModuleData) => {
                 if (nextModuleData.module.lessons.length > 0) {
                   const firstLesson = nextModuleData.module.lessons[0];
-                  setCurrentLesson({
-                    moduleSlug: nextModule.slug,
-                    lessonSlug: firstLesson.slug,
-                  });
-                  setCurrentLessonData({
-                    provider: firstLesson.provider,
-                    videoId: firstLesson.videoId,
-                    content: firstLesson.content,
-                    title: firstLesson.title,
-                    durationMinutes: firstLesson.durationMinutes,
-                    description: firstLesson.description,
-                    files: firstLesson.files,
-                  });
+                  updateLessonSelection(nextModule.slug, firstLesson);
                 }
               }
             );
           }
         } else {
-          // Check if there's a previous lesson in current module
           if (currentLessonIndex > 0) {
             const prevLesson =
               currentModuleData.module.lessons[currentLessonIndex - 1];
-            setCurrentLesson({
-              moduleSlug: currentLesson.moduleSlug,
-              lessonSlug: prevLesson.slug,
-            });
-            setCurrentLessonData({
-              provider: prevLesson.provider,
-              videoId: prevLesson.videoId,
-              content: prevLesson.content,
-              title: prevLesson.title,
-              durationMinutes: prevLesson.durationMinutes,
-              description: prevLesson.description,
-              files: prevLesson.files,
-            });
-          } else if (currentModuleIndex > 0) {
-            // Move to last lesson of previous module
+            updateLessonSelection(currentLesson.moduleSlug, prevLesson);
+            return;
+          }
+
+          if (currentModuleIndex > 0) {
             const prevModule = course.modules[currentModuleIndex - 1];
             setExpandedModule(prevModule.slug);
-            fetchModuleDetails(slug!, prevModule.slug).then(
+            fetchModuleDetails(slug, prevModule.slug).then(
               (prevModuleData) => {
                 if (prevModuleData.module.lessons.length > 0) {
-                  const lastLesson =
-                    prevModuleData.module.lessons[
-                      prevModuleData.module.lessons.length - 1
-                    ];
-                  setCurrentLesson({
-                    moduleSlug: prevModule.slug,
-                    lessonSlug: lastLesson.slug,
-                  });
-                  setCurrentLessonData({
-                    provider: lastLesson.provider,
-                    videoId: lastLesson.videoId,
-                    content: lastLesson.content,
-                    title: lastLesson.title,
-                    durationMinutes: lastLesson.durationMinutes,
-                    description: lastLesson.description,
-                    files: lastLesson.files,
-                  });
+                  const lessons = prevModuleData.module.lessons;
+                  const lastLesson = lessons[lessons.length - 1];
+                  updateLessonSelection(prevModule.slug, lastLesson);
                 }
               }
             );
@@ -540,7 +543,7 @@ const CoursePlayer = () => {
                   <ChevronLeft className="w-4 h-4 mr-1" />
                   Anterior
                 </Button>
-                <Button
+                {/* <Button
                   variant="default"
                   size="sm"
                   onClick={handleCompleteLesson}
@@ -553,7 +556,7 @@ const CoursePlayer = () => {
                     <CheckCircle className="w-4 h-4 mr-2" />
                   )}
                   Completar
-                </Button>
+                </Button> */}
                 <Button
                   variant="outline"
                   size="sm"

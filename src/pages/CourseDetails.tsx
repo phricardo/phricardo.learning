@@ -50,12 +50,22 @@ const CourseDetails = () => {
   const totalMinutes = course.durationMinutes % 60;
   const totalDuration =
     totalHours > 0 ? `${totalHours}h ${totalMinutes}m` : `${totalMinutes}m`;
+  const safeSlug = slug ?? course.slug;
+  const firstModuleSlug = course.modules[0]?.slug;
+  const firstLessonSlug = course.modules[0]?.lessons?.[0]?.slug;
+  const coursePlayerPath =
+    firstModuleSlug && firstLessonSlug
+      ? `/courses/${safeSlug}/${firstModuleSlug}/${firstLessonSlug}`
+      : `/courses/${safeSlug}/learn`;
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Link to="/">
-          <Button variant="ghost" className="mb-6 -ml-4">
+          <Button
+            variant="ghost"
+            className="mb-6 w-full justify-center sm:w-auto sm:justify-start"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar ao catálogo
           </Button>
@@ -80,7 +90,7 @@ const CourseDetails = () => {
               )}
             </div>
 
-            <div className="flex items-center gap-3 mb-4">
+            <div className="mb-4 flex flex-wrap items-center gap-2 sm:gap-3">
               {course.isFree && (
                 <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
                   Gratuito
@@ -93,14 +103,14 @@ const CourseDetails = () => {
               ))}
             </div>
 
-            <h1 className="text-4xl font-bold mb-4">
+            <h1 className="mb-4 text-3xl font-bold sm:text-4xl">
               {course.slug
                 .split("-")
                 .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                 .join(" ")}
             </h1>
 
-            <div className="flex items-center gap-6 text-muted-foreground mb-8">
+            <div className="mb-8 flex flex-wrap items-center gap-4 text-muted-foreground sm:gap-6">
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5" />
                 <span>{totalDuration}</span>
@@ -132,11 +142,11 @@ const CourseDetails = () => {
                 {course.modules.map((module, index) => (
                   <Card
                     key={module.slug}
-                    className="p-5 bg-card border-border hover:bg-card-hover transition-colors"
+                    className="p-4 bg-card border-border hover:bg-card-hover transition-colors sm:p-5"
                   >
                     <div className="flex items-start justify-between">
                       <div>
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                           <span className="text-sm font-semibold text-primary">
                             Módulo {index + 1}
                           </span>
@@ -154,7 +164,7 @@ const CourseDetails = () => {
                         <h3 className="text-lg font-semibold mb-1">
                           {module.title}
                         </h3>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                           <Clock className="w-4 h-4" />
                           <span>
                             {(() => {
@@ -181,8 +191,8 @@ const CourseDetails = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-1">
-            <Card className="p-6 bg-card border-border sticky top-8">
+          <div className="mt-8 lg:col-span-1 lg:mt-0">
+            <Card className="p-6 bg-card border-border lg:sticky lg:top-8">
               <h3 className="text-xl font-semibold mb-4">Sobre o curso</h3>
               <div className="space-y-4 mb-6">
                 {course.isFree && (
@@ -247,7 +257,7 @@ const CourseDetails = () => {
                   </div>
                 </div>
               </div>
-              <Link to={`/courses/${slug}/learn`}>
+              <Link to={coursePlayerPath}>
                 <Button className="w-full bg-gradient-primary hover:shadow-glow transition-all">
                   <Play className="w-4 h-4 mr-2" />
                   Começar Curso
