@@ -21,6 +21,12 @@ import {
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { API_V1_BASE_URL } from "@/config/api";
+import {
+  CourseApiCourse,
+  CourseApiModule,
+  mapCourseDetailsFromApi,
+  mapModuleFromApi,
+} from "@/lib/course-api";
 import Markdown from "markdown-to-jsx";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -81,7 +87,8 @@ const LessonContent = ({ lesson }: { lesson: LessonData }) => {
 const fetchCourseDetails = async (slug: string): Promise<CourseDetails> => {
   const response = await fetch(`${API_V1_BASE_URL}/courses/${slug}`);
   if (!response.ok) throw new Error("Failed to fetch course");
-  return response.json();
+  const data: CourseApiCourse = await response.json();
+  return mapCourseDetailsFromApi(data);
 };
 
 const fetchModuleDetails = async (
@@ -92,7 +99,11 @@ const fetchModuleDetails = async (
     `${API_V1_BASE_URL}/courses/${courseSlug}/modules/${moduleSlug}`
   );
   if (!response.ok) throw new Error("Failed to fetch module");
-  return response.json();
+  const data: CourseApiModule = await response.json();
+  return {
+    courseSlug,
+    module: mapModuleFromApi(data),
+  };
 };
 
 const CoursePlayer = () => {

@@ -8,6 +8,7 @@ export interface Course {
   slug: string;
   title: string;
   thumbnailUrl: string;
+  description?: string;
   instructors: Instructor[];
   tags: string[];
   isFree: boolean;
@@ -30,6 +31,7 @@ export interface Module {
   slug: string;
   title: string;
   description?: string;
+  position?: number;
   durationMinutes?: number;
   lessonsCount?: number;
   lessons?: Lesson[];
@@ -37,12 +39,7 @@ export interface Module {
 
 export interface ModuleDetails {
   courseSlug: string;
-  module: {
-    slug: string;
-    title: string;
-    description: string;
-    lessons: Lesson[];
-  };
+  module: Module;
 }
 
 export interface LessonFile {

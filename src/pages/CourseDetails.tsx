@@ -9,13 +9,16 @@ import { Clock, Play, BookOpen, ArrowLeft } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { getFullImageUrl } from "@/lib/utils";
 import { API_V1_BASE_URL } from "@/config/api";
+import {
+  CourseApiCourse,
+  mapCourseDetailsFromApi,
+} from "@/lib/course-api";
 
 const fetchCourseDetails = async (slug: string): Promise<CourseDetailsType> => {
-  const response = await fetch(
-    `${API_V1_BASE_URL}/courses/${slug}`
-  );
+  const response = await fetch(`${API_V1_BASE_URL}/courses/${slug}`);
   if (!response.ok) throw new Error("Failed to fetch course details");
-  return response.json();
+  const data: CourseApiCourse = await response.json();
+  return mapCourseDetailsFromApi(data);
 };
 
 const CourseDetails = () => {
@@ -46,10 +49,22 @@ const CourseDetails = () => {
     );
   }
 
-  const totalHours = Math.floor(course.durationMinutes / 60);
-  const totalMinutes = course.durationMinutes % 60;
-  const totalDuration =
-    totalHours > 0 ? `${totalHours}h ${totalMinutes}m` : `${totalMinutes}m`;
+  const totalMinutesRaw = course.durationMinutes ?? 0;
+  const hasDuration = totalMinutesRaw > 0;
+  const totalHours = Math.floor(totalMinutesRaw / 60);
+  const remainingMinutes = totalMinutesRaw % 60;
+  const totalDuration = hasDuration
+    ? totalHours > 0
+      ? `${totalHours}h ${remainingMinutes}m`
+      : `${remainingMinutes}m`
+    : null;
+  const modulesCount = course.modules.length;
+  const lessonsCount = course.modules.reduce(
+    (acc, m) => acc + ((m as any).lessonsCount || m.lessons?.length || 0),
+    0
+  );
+  const hasLessons = lessonsCount > 0;
+  const hasInstructors = course.instructors.length > 0;
   const safeSlug = slug ?? course.slug;
   const firstModuleSlug = course.modules[0]?.slug;
   const firstLessonSlug = course.modules[0]?.lessons?.[0]?.slug;
@@ -104,22 +119,31 @@ const CourseDetails = () => {
             </div>
 
             <h1 className="mb-4 text-3xl font-bold sm:text-4xl">
-              {course.slug
-                .split("-")
-                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(" ")}
+              {course.title || course.slug}
             </h1>
 
-            <div className="mb-8 flex flex-wrap items-center gap-4 text-muted-foreground sm:gap-6">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                <span>{totalDuration}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5" />
-                <span>{course.modules.length} módulos</span>
-              </div>
+            <div className="mb-6 flex flex-wrap items-center gap-4 text-muted-foreground sm:gap-6">
+              {totalDuration && (
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  <span>{totalDuration}</span>
+                </div>
+              )}
+              {modulesCount > 0 && (
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5" />
+                  <span>
+                    {modulesCount} m&oacute;dulo{modulesCount === 1 ? "" : "s"}
+                  </span>
+                </div>
+              )}
             </div>
+
+            {course.description && (
+              <p className="text-lg text-muted-foreground leading-relaxed mb-8 whitespace-pre-line">
+                {course.description}
+              </p>
+            )}
 
             {course.introduction?.title && course.introduction?.description && (
               <Card className="p-6 bg-card border-border mb-8">
@@ -164,6 +188,11 @@ const CourseDetails = () => {
                         <h3 className="text-lg font-semibold mb-1">
                           {module.title}
                         </h3>
+                        {module.description && (
+                          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                            {module.description}
+                          </p>
+                        )}
                         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                           <Clock className="w-4 h-4" />
                           <span>
@@ -197,65 +226,61 @@ const CourseDetails = () => {
               <div className="space-y-4 mb-6">
                 {course.isFree && (
                   <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Preço</span>
+                    <span className="text-muted-foreground">Pre&ccedil;o</span>
                     <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
                       Gratuito
                     </Badge>
                   </div>
                 )}
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-muted-foreground">Duração</span>
-                  <span className="font-medium">{totalDuration}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-muted-foreground">Módulos</span>
-                  <span className="font-medium">{course.modules.length}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-muted-foreground">Aulas</span>
-                  <span className="font-medium">
-                    {course.modules.reduce(
-                      (acc, m) =>
-                        acc +
-                        ((m as any).lessonsCount || m.lessons?.length || 0),
-                      0
-                    )}
-                  </span>
-                </div>
-                <div className="py-2">
-                  <span className="text-muted-foreground block mb-3">
-                    Instrutores
-                  </span>
-                  <div className="space-y-3">
-                    {course.instructors.map((instructor) => (
-                      <div
-                        key={instructor.name}
-                        className="flex items-start gap-3"
-                      >
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage
-                            src={getFullImageUrl(instructor.avatarUrl)}
-                            alt={instructor.name}
-                          />
-                          <AvatarFallback>
-                            {instructor.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">
-                            {instructor.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {instructor.bio}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                {totalDuration && (
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Dura&ccedil;&atilde;o</span>
+                    <span className="font-medium">{totalDuration}</span>
                   </div>
-                </div>
+                )}
+                {modulesCount > 0 && (
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">M&oacute;dulos</span>
+                    <span className="font-medium">{modulesCount}</span>
+                  </div>
+                )}
+                {hasLessons && (
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Aulas</span>
+                    <span className="font-medium">{lessonsCount}</span>
+                  </div>
+                )}
+                {hasInstructors && (
+                  <div className="py-2">
+                    <span className="text-muted-foreground block mb-3">
+                      Instrutores
+                    </span>
+                    <div className="space-y-3">
+                      {course.instructors.map((instructor) => (
+                        <div key={instructor.name} className="flex items-start gap-3">
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage
+                              src={getFullImageUrl(instructor.avatarUrl)}
+                              alt={instructor.name}
+                            />
+                            <AvatarFallback>
+                              {instructor.name
+                                .split(' ')
+                                .map((n) => n[0])
+                                .join('')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{instructor.name}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {instructor.bio}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <Link to={coursePlayerPath}>
                 <Button className="w-full bg-gradient-primary hover:shadow-glow transition-all">
